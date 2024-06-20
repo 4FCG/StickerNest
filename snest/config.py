@@ -41,8 +41,8 @@ class ConfigPage(QScrollArea):
             'mm_width' : A4_width,
             'mm_height' : A4_height,
             'dpi' : 300.0,
-            'margin' : 0, # margin to be added around the outside of each sticker's cut line
-            'padding' : 0 # padding to be added to the inside of each sticker's cut line
+            'margin' : 5, # margin to be added around the outside of each sticker's cut line
+            'padding' : 5 # padding to be added to the inside of each sticker's cut line
         }
 
         self.setFixedWidth(width)

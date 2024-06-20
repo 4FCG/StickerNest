@@ -23,14 +23,8 @@ import cv2
 def load_image(path: str, margin: int) -> Polygon:
     """Loads image file and returns outline Polygon by removing transparent pixels."""
     # Flip y coordinates as they are inverted in images
-    image = Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM) # TODO Can this be replaced by cv2?
+    image = Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM).convert('RGBA') # TODO Can this be replaced by cv2?
     img_array = np.asarray(image)
-
-    if img_array.shape[2] < 4: # Image does not have an alpha channel
-        # Return a bounding box + margin instead
-        bounding_box = Polygon([(0, 0), (img_array.shape[1], 0), (img_array.shape[1], img_array.shape[0]), (0 , img_array.shape[0])])
-        buffered = buffer(bounding_box, margin)
-        return buffered
 
     mask = img_array[:,:,3]!=0 # transparent pixels = False, everything else = True
     
