@@ -112,7 +112,7 @@ class NestThread(QThread):
 
             ax.invert_yaxis()
             # Plot the bin, so the image is sized correctly
-            ax.plot(*fitter.bin.polygon.exterior.xy, color='black')
+            ax.plot(*fitter.bin.polygon.exterior.xy, color='black', alpha=0.0)
             plt.axis('off')
             # Ensure the plot is the full image
             plt.tight_layout(pad=0, w_pad=0, h_pad=0)

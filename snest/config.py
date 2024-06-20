@@ -40,7 +40,7 @@ class ConfigPage(QScrollArea):
 
             'mm_width' : A4_width,
             'mm_height' : A4_height,
-            'dpi' : 300,
+            'dpi' : 300.0,
             'margin' : 0, # margin to be added around the outside of each sticker's cut line
             'padding' : 0 # padding to be added to the inside of each sticker's cut line
         }
@@ -50,10 +50,6 @@ class ConfigPage(QScrollArea):
         self.setWidgetResizable(True)
         
         layout = QVBoxLayout()
-
-        validator = QDoubleValidator(1.0, 99999.0, 2)
-        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
-        validator.setLocale(QLocale("en_US"))
 
         # Output settings
 
@@ -68,7 +64,10 @@ class ConfigPage(QScrollArea):
         width_label.setText('Output width (millimeter)')
         layout.addWidget(width_label)
         self.width_box = QLineEdit(self)
-        self.width_box.setValidator(validator)
+        width_validator = QDoubleValidator(1.0, 99999.0, 2, self.width_box)
+        width_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        width_validator.setLocale(QLocale("en_US"))
+        self.width_box.setValidator(width_validator)
         self.width_box.setMinimumHeight(20)
         layout.addWidget(self.width_box)
 
@@ -76,7 +75,10 @@ class ConfigPage(QScrollArea):
         height_label.setText('Output height (millimeter)')
         layout.addWidget(height_label)
         self.height_box = QLineEdit(self)
-        self.height_box.setValidator(validator)
+        height_validator = QDoubleValidator(1.0, 99999.0, 2, self.height_box)
+        height_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        height_validator.setLocale(QLocale("en_US"))
+        self.height_box.setValidator(height_validator)
         self.height_box.setMinimumHeight(20)
         layout.addWidget(self.height_box)
 
@@ -84,7 +86,10 @@ class ConfigPage(QScrollArea):
         dpi_label.setText('Output dpi')
         layout.addWidget(dpi_label)
         self.dpi_box = QLineEdit(self)
-        self.dpi_box.setValidator(validator)
+        dpi_validator = QDoubleValidator(1.0, 99999.0, 2, self.dpi_box)
+        dpi_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        dpi_validator.setLocale(QLocale("en_US"))
+        self.dpi_box.setValidator(dpi_validator)
         self.dpi_box.setMinimumHeight(20)
         layout.addWidget(self.dpi_box)
 
@@ -92,7 +97,7 @@ class ConfigPage(QScrollArea):
         margin_label.setText('Sticker margin')
         layout.addWidget(margin_label)
         self.margin_box = QLineEdit(self)
-        self.margin_box.setValidator(QIntValidator(0, 999))
+        self.margin_box.setValidator(QIntValidator(0, 99999, self.margin_box))
         self.margin_box.setMinimumHeight(20)
         self.margin_box.setToolTip('Space between the cutting line and other lines.')
         layout.addWidget(self.margin_box)
@@ -101,7 +106,7 @@ class ConfigPage(QScrollArea):
         padding_label.setText('Sticker padding')
         layout.addWidget(padding_label)
         self.padding_box = QLineEdit(self)
-        self.padding_box.setValidator(QIntValidator(0, 999))
+        self.padding_box.setValidator(QIntValidator(0, 99999, self.padding_box))
         self.padding_box.setMinimumHeight(20)
         self.padding_box.setToolTip('Space between the sticker and its cutting line.')
         layout.addWidget(self.padding_box)
@@ -121,7 +126,7 @@ class ConfigPage(QScrollArea):
         gen_label.setText('Number of generations')
         layout.addWidget(gen_label)
         self.gen_box = QLineEdit(self)
-        self.gen_box.setValidator(QIntValidator(1, 999))
+        self.gen_box.setValidator(QIntValidator(1, 999, self.gen_box))
         self.gen_box.setMinimumHeight(20)
         self.gen_box.setToolTip('The total amount of generations the optimizer does.')
         layout.addWidget(self.gen_box)
@@ -130,7 +135,7 @@ class ConfigPage(QScrollArea):
         pop_label.setText('Population size')
         layout.addWidget(pop_label)
         self.pop_box = QLineEdit(self)
-        self.pop_box.setValidator(QIntValidator(2, 999))
+        self.pop_box.setValidator(QIntValidator(2, 999, self.pop_box))
         self.pop_box.setMinimumHeight(20)
         self.pop_box.setToolTip('The amount of random solutions created for each generation.')
         layout.addWidget(self.pop_box)
@@ -139,16 +144,16 @@ class ConfigPage(QScrollArea):
         mut_label.setText('Mutation rate')
         layout.addWidget(mut_label)
         self.mut_box = QLineEdit(self)
-        self.mut_box.setValidator(QIntValidator(1, 100))
+        self.mut_box.setValidator(QIntValidator(1, 100, self.mut_box))
         self.mut_box.setMinimumHeight(20)
-        self.mut_box.setToolTip('The percentage rate at which changes are randomly added.')
+        self.mut_box.setToolTip('The percentage rate (1-100) at which changes are randomly added.')
         layout.addWidget(self.mut_box)
 
         rot_label = QLabel(self)
         rot_label.setText('Rotations')
         layout.addWidget(rot_label)
         self.rot_box = QLineEdit(self)
-        self.rot_box.setValidator(QIntValidator(1, 360))
+        self.rot_box.setValidator(QIntValidator(1, 360, self.rot_box))
         self.rot_box.setMinimumHeight(20)
         self.rot_box.setToolTip('The amount of different rotations to try, 1 for none, 4 for 90 degree angles, etc..')
         layout.addWidget(self.rot_box)
@@ -213,18 +218,19 @@ class ConfigPage(QScrollArea):
 
     def _set_config(self):
         self.config = {
-            'mm_width' : float(self.width_box.text()),
-            'mm_height' : float(self.height_box.text()),
-            'dpi' : float(self.dpi_box.text()),
+            'mm_width' : max(float(self.width_box.text()), 1.0),
+            'mm_height' : max(float(self.height_box.text()), 1.0),
+            'dpi' : max(float(self.dpi_box.text()), 1.0),
             'margin' : int(self.margin_box.text()),
             'padding' : int(self.padding_box.text()),
-            'num_generations': int(self.gen_box.text()),
-            'population_size': int(self.pop_box.text()),
-            'mutation_rate': int(self.mut_box.text()),
-            'rotations': int(self.rot_box.text())
+            'num_generations': max(int(self.gen_box.text()), 1),
+            'population_size': max(int(self.pop_box.text()), 2),
+            'mutation_rate': max(int(self.mut_box.text()), 1),
+            'rotations': max(int(self.rot_box.text()), 1)
         }
 
         self.config = self.save_config(self.config)
+        self._reload_config()
 
     def showEvent(self, event):
         self._reload_config()

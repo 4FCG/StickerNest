@@ -108,6 +108,10 @@ class Fitter_GA():
     
     def __mate(self, male: Solution, female: Solution) -> tuple[Solution, Solution]:
         """Function that applies single point crossover to two parent solutions, creating 2 new children."""
+        # In the edge case that only 1 image is being fitted, skip the mate as it is useless
+        if len(male.polys) == 1:
+            return (male, female)
+
         cutoff_point = random.randint(1, len(male.polys) - 1)
 
         child_1 = male.polys[:cutoff_point]

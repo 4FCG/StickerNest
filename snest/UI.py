@@ -14,12 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIntValidator, QIcon, QCursor
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QIntValidator, QIcon, QCursor, QDesktopServices
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QLabel, QProgressBar, QLineEdit, QGroupBox, QHBoxLayout, QStackedWidget, QSizePolicy
 from snest.nest_thread import NestThread
 from snest.config import ConfigPage
 import os
+
+VALID_TYPES = ['png', 'webp', 'tiff', 'tif', 'bmp']
+GITHUB_URL = QUrl('https://github.com/4FCG/StickerNest')
 
 class MainPage(QWidget):
     def __init__(self, parent = None, height = 300, width = 250) -> None:
@@ -37,7 +40,7 @@ class MainPage(QWidget):
         input_layout = QHBoxLayout()
 
         self._select_label = QLabel(self)
-        self._select_label.setText('0 stickers selected')
+        self._select_label.setText('0 images selected')
         input_layout.addWidget(self._select_label)
 
         self._select_button = QPushButton("Select Images", self)
@@ -74,7 +77,7 @@ class MainPage(QWidget):
         self.n_sets_box = QLineEdit(self)
         self.n_sets_box.setText('1')
         self.n_sets_box.setValidator(QIntValidator(1, 99))
-        self.n_sets_box.setToolTip('Repeats the selected stickers N times')
+        self.n_sets_box.setToolTip('Repeats the selected images N times')
         self.n_sets_box.textEdited.connect(self._ready_for_nest)
         layout.addWidget(self.n_sets_box)
 
@@ -146,9 +149,13 @@ class MainPage(QWidget):
         if not os.path.isdir(self.output_path):
             error += 'Output dir is invalid.\n'
         if len(self._queue) <= 0:
-            error += 'Please select stickers.\n'
-        if len(self.n_sets_box.text()) <= 0 or int(self.n_sets_box.text()) <= 0:
+            error += 'Please select images.\n'
+        if not self.n_sets_box.hasAcceptableInput():# len(self.n_sets_box.text()) <= 0 or int(self.n_sets_box.text()) <= 0:
             error += 'Select a valid number of sets.\n'
+        for file in self._queue:
+            if file.lower().split('.')[-1] not in VALID_TYPES:
+                error += 'Please select valid image files (png, webp).\n'
+                break
 
         if error == '':
             self._nest_button.setEnabled(True)
@@ -161,12 +168,12 @@ class MainPage(QWidget):
     def _select_images(self):
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select Stickers",
+            "Select images",
             "",
-            "PNG Files (*.png);; All Files (*.*)",
+            "Images (*.png *.webp *.tiff *.tif *.bmp);; All Files (*.*)",
         )
 
-        self._select_label.setText(f'{len(file_paths)} stickers selected')
+        self._select_label.setText(f'{len(file_paths)} images selected')
         self._nest_button.setEnabled(True)
         self._queue = file_paths
         self._ready_for_nest()
@@ -198,6 +205,7 @@ class UIWrapper(QMainWindow):
         self.main_page = MainPage(self, self.height(), self.width())
         self.main_page._nest_button.clicked.connect(self._nest_images)
         self.main_page.settings_button.clicked.connect(self._open_settings)
+        self.main_page.github_button.clicked.connect(self._open_github)
         
         # Config Page
 
@@ -217,6 +225,9 @@ class UIWrapper(QMainWindow):
 
     def _open_settings(self):
         self.widgets.setCurrentWidget(self.config_page)
+
+    def _open_github(self):
+        QDesktopServices.openUrl(GITHUB_URL)
 
     def _back_button(self):
         self.widgets.setCurrentWidget(self.main_page)
@@ -249,7 +260,7 @@ class UIWrapper(QMainWindow):
 
     def _completed(self):
         self.main_page._select_button.setEnabled(True)
-        self.main_page._select_label.setText('0 stickers selected')
+        self.main_page._select_label.setText('0 images selected')
         self.main_page._queue = []
         self.main_page._output_button.setEnabled(True)
         self.main_page._output_textbox.setEnabled(True)
