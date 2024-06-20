@@ -14,11 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from shapely import Polygon, affinity, MultiLineString, MultiPolygon, GeometryCollection
-from itertools import count
+from typing import Self
 import copy
-from snest.algorithm.minkowski import minkowski_diff_nfp, rectangle_ifp
+from itertools import count
+from multiprocessing.pool import Pool
+from shapely import Polygon, affinity, MultiLineString, MultiPolygon, GeometryCollection
 import numpy as np
+from snest.algorithm.minkowski import minkowski_diff_nfp, rectangle_ifp
 
 TOL = 10 ** -9
 
@@ -26,21 +28,26 @@ def almost_equal(a, b, tolerance=TOL):
     return abs(a - b) < tolerance
 
 class FitPoly():
+    """Helper class for each polygon that must be fit.
+        Keeps track of the original polygon, and all the transformation applied to it.
+    """
     id_iter = count(1)
 
-    def __init__(self, polygon: Polygon, rotation = 0, polygon_id=None):
+    def __init__(self, polygon: Polygon, rotation: float = 0, polygon_id: int | None = None):
         self.polygon_id = polygon_id
         self.id = next(FitPoly.id_iter)
         self.original_polygon = polygon
-        self.rotation = rotation
-        self.polygon = copy.deepcopy(polygon)
+        self.rotation = rotation # keeps track of total degrees rotated for nfp caching purposes
+        self.polygon = copy.deepcopy(polygon) # This one will be moved around and rotated
 
         # Defaults
-        self.fit = False
-        self.bin_n = 0
-        self.transformation = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]) # Keeps track of all transforms applied
+        self.fit = False # Flag representing if it has been placed or not
+        self.bin_n = 0 # If placed, this represents what bin it is placed in
+        # Keeps track of all transforms applied, which is used later to get the images to their final fit position
+        self.transformation = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
-    def rotate(self, rotation):
+    def rotate(self, rotation: float) -> Self:
+        """Function to apply rotation to the polygon."""
         if rotation == 0:
             return self
         
@@ -48,28 +55,37 @@ class FitPoly():
 
         self.transformation = copy.copy(self.transformation)
 
+        # Change rotation do rad for calculation purposes
         rotation = np.deg2rad(rotation)
 
+        # Build rotation matrix with rotation centered on the centroid of the polygon
         center = self.polygon.exterior.centroid.coords[0]
         x_off = center[0] - center[0] * np.cos(rotation) + center[1] * np.sin(rotation)
         y_off = center[1] - center[0] * np.sin(rotation) - center[1] * np.cos(rotation)
         
         rotation_matrix = np.array([[np.cos(rotation), -np.sin(rotation), x_off], [np.sin(rotation), np.cos(rotation), y_off], [0, 0, 1]])
 
+        # Add rotation to the transformation
         self.transformation = np.matmul(rotation_matrix, self.transformation)
+        # Apply the rotation
         self.polygon = affinity.affine_transform(self.polygon, [np.cos(rotation), -np.sin(rotation), np.sin(rotation), np.cos(rotation), x_off, y_off])
         return self
     
-    def translate(self, translation):
+    def translate(self, translation: tuple[float, float]) -> Self:
+        """Function to apply translation to the polygon."""
+        # Add translation to the transformation
         self.transformation = np.matmul(np.array([[1, 0, translation[0]], [0, 1, translation[1]], [0, 0, 1]]), self.transformation)
+        # Apply the translation
         self.polygon = affinity.translate(self.polygon, xoff=translation[0], yoff=translation[1])
         return self
 
 # Place where bounding box smallest using brute force
 # Uses min bounding box as heuristic with double weight to the width
-def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Polygon):
+def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Polygon) -> tuple[float, float] | None: # TODO clean this up, bin is not used anymore
+    """Returns the position of all valid_nfp positions where the polygon can be placed that adds the least amount of bin area used."""
     current_poly = copy.deepcopy(current_poly)
 
+    # Check what kind of nfp we have
     if not valid_nfp:
         return None # No valid points
     if isinstance(valid_nfp, MultiLineString) or isinstance(valid_nfp, GeometryCollection):
@@ -85,8 +101,10 @@ def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Pol
 
     placed_polys = [fitpoly.polygon for fitpoly in placed]
     
+    # Brute force try every valid point along valid_nfp
+    # Place the polygon there and calculate the area used
     for nfp_coord in valid_coords:
-        shift_vector = {
+        shift_vector = { # TODO change this to a tuple like the rest
             'x': nfp_coord[0] - current_poly.polygon.exterior.coords[0][0],
             'y': nfp_coord[1] - current_poly.polygon.exterior.coords[0][1],
         }
@@ -109,7 +127,8 @@ def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Pol
     else:
         return None
 
-def calc_nfp(tasks):
+def calc_nfp(tasks) -> dict[str, Polygon]:
+    """Helper function to calculate nfps for a list of polygon pairs with multiprocessing."""
     new_cache = {}
 
     for task in tasks:
@@ -118,6 +137,7 @@ def calc_nfp(tasks):
             # Bin is never rotated, no rotations need to be done
             nfp_poly = rectangle_ifp(A.polygon, B.polygon)
         else:
+            # Account for A's rotation
             rev_rotate = affinity.rotate(B.polygon, -A.rotation)
             nfp_poly = minkowski_diff_nfp(A.original_polygon, rev_rotate)
 
@@ -125,19 +145,25 @@ def calc_nfp(tasks):
 
     return new_cache
         
-
-def calc_nfps(population, bin, cache, worker_pool, n_processes):
+# TODO Should this function return the cache instead of writing straight to it?
+def calc_nfps(population, bin: FitPoly, cache: dict[str, Polygon], worker_pool: Pool, n_processes: int):
+    """Calculates all nfps not yet cached and add them to the cache."""
     tasks = {}
 
+    # The cache key represents a unique combination between polygon A, polygon B and its rotation
+    # If this key is not in the cache, it must be calculated
     for solution in population:
         polygons = solution.polys
         for i in range(0, len(polygons)):
+            # The rotations keep stacking, remove all unnecessary 360's
             B_rotation = polygons[i].rotation - 360 * (polygons[i].rotation//360)
 
+            # Every polygon will need to get an ifp with the bin
             cache_key = f'{bin.polygon_id},{polygons[i].polygon_id}-{B_rotation}'
             if (cache_key not in cache) and (cache_key not in tasks):
                 tasks[cache_key] = (bin, polygons[i])
 
+            # Each polygon will need an nfp with those before it in the order
             for previous_poly in polygons[:i]:
                 A_rotation = previous_poly.rotation - 360 * (previous_poly.rotation//360)
                 cache_key = f'{previous_poly.polygon_id},{polygons[i].polygon_id}-{B_rotation - A_rotation}'
@@ -145,16 +171,19 @@ def calc_nfps(population, bin, cache, worker_pool, n_processes):
                     tasks[cache_key] = (previous_poly, polygons[i])
 
     task_list = [(x[0], x[1][0], x[1][1]) for x in tasks.items()]
-
-    parts = np.array_split(task_list, n_processes)
-
+    # Split the tasks and run them parallel
+    parts = np.array_split(task_list, n_processes) # TODO is this split worth it if the amount of work per split is small?
+    
     results = list(worker_pool.starmap(calc_nfp, [(x,) for x in parts]))
-
+    # Add the new keys from each parallel result to the main cache
     for result in results:
         cache.update(result)
 
-
-def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TODO implement bin limit feature
+# TODO implement bin limit feature
+def nest(bin: Polygon, polygons: list[FitPoly], cache: dict[str, Polygon], bin_limit: int = 0) -> tuple[float, list[list[FitPoly]]]:
+    """Places the given polygons in the given order, adding new bins should a polygon not fit anymore.
+        Returns the fitness score and a list of bins, each containing a list of polygons that are placed in said bin.
+    """
     for poly in polygons:
         poly.fit = False
     
@@ -164,6 +193,7 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TO
     bin_n = 0
     result = []
 
+    # This outer loop represents adding bins
     while len(to_place) > 0:
         placed = []
 
@@ -193,6 +223,7 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TO
             first.bin_n = bin_n
             first.fit = True
 
+        # After the first placement, we need to start taking into account previously placed polygons
         for i in range(1, len(to_place)):
             B_rotation = to_place[i].rotation - 360 * (to_place[i].rotation//360)
             
@@ -203,6 +234,7 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TO
                 continue # It doesn't fit the bin
 
             full_nfp = None
+            # For all previously placed ones
             for placed_poly in placed:
 
                 A_rotation = placed_poly.rotation - 360 * (placed_poly.rotation//360)
@@ -247,6 +279,7 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TO
             to_place.pop(to_place.index(poly))
 
         if len(placed) > 0:
+            # merge all placed polygons to calculate space used
             allpoints = MultiPolygon([fitpoly.polygon for fitpoly in placed])
             bounds = allpoints.bounds
             width = (bounds[2] - bounds[0])
@@ -258,7 +291,9 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache, bin_limit: int = 0): # TO
     placed_count = sum([1 for poly in polygons if poly.fit])
 
     # Lower is better
-    fitness += (len(polygons) - placed_count) * 2 # Punish for each polygon that could not be fit
-    fitness += bin_n # Punish for each extra bin required
+    # Punish for each polygon that could not be fit
+    fitness += (len(polygons) - placed_count) * 2 # Currently only relevant if a certain rotation makes it impossible to place an image inside the bin
+    # Punish for each extra bin required
+    fitness += bin_n
 
-    return fitness, result
+    return (fitness, result)

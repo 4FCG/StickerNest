@@ -20,8 +20,10 @@ from shapely.ops import unary_union
 import numpy as np
 import cv2
 
-def load_image(path, margin):
-    image = Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM)
+def load_image(path: str, margin: int) -> Polygon:
+    """Loads image file and returns outline Polygon by removing transparent pixels."""
+    # Flip y coordinates as they are inverted in images
+    image = Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM) # TODO Can this be replaced by cv2?
     img_array = np.asarray(image)
 
     if img_array.shape[2] < 4: # Image does not have an alpha channel
@@ -30,15 +32,17 @@ def load_image(path, margin):
         buffered = buffer(bounding_box, margin)
         return buffered
 
-    mask = img_array[:,:,3]!=0 # transparent pixels = False rest = True
+    mask = img_array[:,:,3]!=0 # transparent pixels = False, everything else = True
     
     polygons = []
 
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE) # Convert mask to blackwhite image and finds contours
+    # Convert mask to black-white image and finds contours
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     # Turn all contours into polygons
     for contour in contours:
-        if contour.shape[0] > 2: # skip if not at least 3 points, must be some floating pixels
+        # TODO Could skipping this cause issues?
+        if contour.shape[0] > 2: # skip if not at least 3 points, likely some floating pixels
             polygons.append(Polygon(contour[:,0,:]))
 
     # Unary union to remove overlaps

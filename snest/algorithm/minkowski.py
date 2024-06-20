@@ -17,25 +17,32 @@
 from shapely import Polygon, affinity, MultiPoint
 import numpy as np
 
-def minkowski_diff_nfp(A, B):
-
+# https://cse442-17f.github.io/Gilbert-Johnson-Keerthi-Distance-Algorithm/
+def minkowski_diff_nfp(A: Polygon, B: Polygon) -> Polygon:
+    """Return the no fit polygon of B around A using the minkowsi difference"""
     A_inv = affinity.scale(A, -1, -1, origin=(0, 0))
     new_points = []
-    for i in range(2):
+
+    # For x then y
+    for i in range(2): # TODO this loop is redundant
         coord_A = A_inv.exterior.xy[i]
         coord_B = B.exterior.xy[i]
+        # Add up all combinations of x/y and flatten
         new_coords = np.add(*np.meshgrid(coord_A, coord_B)).reshape(-1)
         new_points.append(new_coords)
 
+    # Stack x and y together, then get the convex_hull of the resulting MultiPoint structure
     hull = MultiPoint(np.stack(new_points, 1)).convex_hull
 
     ref_point = B.exterior.coords[0]
-
+    
+    # Undo inverse and move to ref point, resulting in an nfp
     nfp = affinity.affine_transform(hull, [-1, 0, 0, -1, ref_point[0], ref_point[1]])
     return nfp
 
-def rectangle_ifp(rect, poly):
-
+# Since the bin is always a rectangle this is sufficient
+def rectangle_ifp(rect: Polygon, poly: Polygon) -> Polygon:
+    """Return the inner fit polygon of poly in rect"""
     rect_width = rect.bounds[2] - rect.bounds[0]
     rect_height = rect.bounds[3] - rect.bounds[1]
 
