@@ -27,5 +27,7 @@ PyInstaller.__main__.run([
     'logo.ico',
     '--noconfirm',
     '--add-data',
-    'logo.ico:.'
+    'logo.ico:.',
+    '--add-data',
+    'LICENSE:.'
 ])
