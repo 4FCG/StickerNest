@@ -37,7 +37,8 @@ def load_image(path: str, margin: int) -> Polygon:
     for contour in contours:
         # TODO Could skipping this cause issues?
         if contour.shape[0] > 2: # skip if not at least 3 points, likely some floating pixels
-            polygons.append(Polygon(contour[:,0,:]))
+            # Apply 0 buffer to close any holes present
+            polygons.append(buffer(Polygon(contour[:,0,:]), 0))
 
     # Unary union to remove overlaps
     # Concave hull to join separate parts

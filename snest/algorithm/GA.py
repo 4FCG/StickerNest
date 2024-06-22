@@ -110,6 +110,9 @@ class Fitter_GA():
         """Function that applies single point crossover to two parent solutions, creating 2 new children."""
         # In the edge case that only 1 image is being fitted, skip the mate as it is useless
         if len(male.polys) == 1:
+            # We want to return the same Solutions, but make sure to turn of the fit flag
+            male.fitted = None
+            female.fitted = None
             return (male, female)
 
         cutoff_point = random.randint(1, len(male.polys) - 1)
