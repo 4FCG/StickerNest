@@ -20,16 +20,18 @@ import multiprocessing as mp
 from PySide6.QtWidgets import QApplication
 from snest import UI
 
-if __name__ == '__main__':
-    mp.set_start_method('spawn')
-    mp.freeze_support() # needed for Windows
+if __name__ == "__main__":
+    mp.set_start_method("spawn")
+    mp.freeze_support()  # needed for Windows
     app = QApplication([])
 
-    if getattr(sys, 'frozen', False):
-        application_path = os.path.dirname(sys.executable) # Path to the exe itself
-        internal_dir = sys._MEIPASS # Path to the folder containing all the backend files for the exe
+    if getattr(sys, "frozen", False):
+        # Path to the exe itself
+        application_path = os.path.dirname(sys.executable)
+        # Path to the folder containing all the backend files for the exe
+        internal_dir = sys._MEIPASS
     else:
-        application_path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+        application_path = os.path.dirname(os.path.abspath(__file__))
         internal_dir = application_path
 
     window = UI.UIWrapper(application_path, internal_dir, app)

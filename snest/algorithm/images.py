@@ -20,33 +20,44 @@ from shapely.ops import unary_union
 import numpy as np
 import cv2
 
+
 def load_image(path: str, margin: int) -> Polygon:
-    """Loads image file and returns outline Polygon by removing transparent pixels."""
+    """Loads image file and returns outline Polygon
+        by removing transparent pixels."""
     # Flip y coordinates as they are inverted in images
-    image = Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM).convert('RGBA') # TODO Can this be replaced by cv2?
+    # TODO Can this be replaced by cv2?
+    image = (
+        Image.open(path).transpose(method=Image.FLIP_TOP_BOTTOM)
+        .convert("RGBA")
+    )
     img_array = np.asarray(image)
 
-    mask = img_array[:,:,3]!=0 # transparent pixels = False, everything else = True
-    
+    mask = img_array[:, :, 3] != 0  # transparent pixels = False
+
     polygons = []
 
     # Convert mask to black-white image and finds contours
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
+    )
 
     # Turn all contours into polygons
     for contour in contours:
         # TODO Could skipping this cause issues?
-        if contour.shape[0] > 2: # skip if not at least 3 points, likely some floating pixels
+        if (
+            contour.shape[0] > 2
+        ):  # skip if not at least 3 points, likely some floating pixels
             # Apply 0 buffer to close any holes present
-            polygons.append(buffer(Polygon(contour[:,0,:]), 0))
+            polygons.append(buffer(Polygon(contour[:, 0, :]), 0))
 
     # Unary union to remove overlaps
     # Concave hull to join separate parts
     hull = concave_hull(unary_union(polygons)).simplify(2)
-    
+
     # Add margin as buffer
     buffered = buffer(hull, margin)
     return buffered
+
 
 def load_file(input: tuple[str, int]) -> tuple[Polygon, str]:
     """Helper function to load images with multiprocessing."""

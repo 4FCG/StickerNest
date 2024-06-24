@@ -22,7 +22,8 @@ PyInstaller.__main__.run([
     '--name',
     'StickerNest',
     '--hiddenimport',
-    'pkg_resources.extern', # https://github.com/pyinstaller/pyinstaller/issues/8554
+    # https://github.com/pyinstaller/pyinstaller/issues/8554
+    'pkg_resources.extern',
     '--icon',
     'logo.ico',
     '--noconfirm',
