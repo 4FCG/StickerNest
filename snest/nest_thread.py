@@ -15,7 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from PySide6.QtCore import QThread, Signal
-from snest.algorithm.GA import Fitter_GA, load_file
 import os
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -24,10 +23,14 @@ from tqdm import tqdm
 from PIL import Image
 from shapely import buffer
 import textwrap
+from snest.algorithm.GA import Fitter_GA
+from snest.algorithm.images import load_file
 
 mpl.use('agg')
 
 MM = 1/25.4  # mm to inch
+
+
 
 class NestThread(QThread):
     completed = Signal()
@@ -101,7 +104,7 @@ class NestThread(QThread):
             for poly in page:
                 if poly.fit:
                     # Remove the margin from the polygon, leaving it padding distance away from the image
-                    cutlines.append(buffer(poly.polygon, -self.config['margin'])) # TODO Due to simplification, this may cause slight overlaps with the image if the padding is 0
+                    cutlines.append(buffer(poly.polygon, -self.config['margin']))
                     # Fetch the image that belongs to the polygon and flip its y axis to fit the way we fit polygons
                     image = Image.open(image_binds[poly.polygon_id]).transpose(method=Image.FLIP_TOP_BOTTOM)
                     # Apply the FitPoly transformation to the image, moving it to its fitted position

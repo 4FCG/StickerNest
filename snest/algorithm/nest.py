@@ -81,7 +81,7 @@ class FitPoly():
 
 # Place where bounding box smallest using brute force
 # Uses min bounding box as heuristic with double weight to the width
-def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Polygon) -> tuple[float, float] | None: # TODO clean this up, bin is not used anymore
+def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly) -> tuple[float, float] | None:
     """Returns the position of all valid_nfp positions where the polygon can be placed that adds the least amount of bin area used."""
     current_poly = copy.deepcopy(current_poly)
 
@@ -104,12 +104,12 @@ def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Pol
     # Brute force try every valid point along valid_nfp
     # Place the polygon there and calculate the area used
     for nfp_coord in valid_coords:
-        shift_vector = { # TODO change this to a tuple like the rest
-            'x': nfp_coord[0] - current_poly.polygon.exterior.coords[0][0],
-            'y': nfp_coord[1] - current_poly.polygon.exterior.coords[0][1],
-        }
+        shift_vector = (
+            nfp_coord[0] - current_poly.polygon.exterior.coords[0][0],
+            nfp_coord[1] - current_poly.polygon.exterior.coords[0][1],
+        )
 
-        translated_poly = affinity.translate(current_poly.polygon, xoff=shift_vector['x'], yoff=shift_vector['y'])
+        translated_poly = affinity.translate(current_poly.polygon, xoff=shift_vector[0], yoff=shift_vector[1])
 
         allpoints = MultiPolygon(placed_polys + [translated_poly])
         bounds = allpoints.bounds
@@ -117,15 +117,12 @@ def place_poly(valid_nfp, placed: list[FitPoly], current_poly: FitPoly, bin: Pol
         # weigh width more, to help compress in direction of gravity
         area = (bounds[2] - bounds[0])*2 + (bounds[3] - bounds[1])
 
-        if minarea is None or area < minarea or (almost_equal(minarea, area) and (minx is None or shift_vector['x'] < minx)):
+        if minarea is None or area < minarea or (almost_equal(minarea, area) and (minx is None or shift_vector[0] < minx)):
             minarea = area
             position = shift_vector
-            minx = shift_vector['x']
+            minx = shift_vector[0]
 
-    if position:
-        return (position['x'], position['y'])
-    else:
-        return None
+    return position
 
 def calc_nfp(tasks) -> dict[str, Polygon]:
     """Helper function to calculate nfps for a list of polygon pairs with multiprocessing."""
@@ -267,7 +264,7 @@ def nest(bin: Polygon, polygons: list[FitPoly], cache: dict[str, Polygon], bin_l
                 valid = full_nfp.exterior.intersection(inner_poly)
             
             # Find the best placement for the polygon in all the valid placements
-            placement = place_poly(valid, placed, to_place[i], bin)
+            placement = place_poly(valid, placed, to_place[i])
             if placement:
                 # Apply the translation and place the polygon, if a placement was found
                 to_place[i].translate(placement)

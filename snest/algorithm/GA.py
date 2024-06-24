@@ -22,7 +22,6 @@ from shapely import Polygon
 from tqdm import tqdm
 import numpy as np
 from snest.algorithm.nest import nest, FitPoly, calc_nfps
-from snest.algorithm.images import load_image
 
 class Solution():
     """Class representing 1 possible fit solution. With a unique order and rotations."""
@@ -58,12 +57,6 @@ class Solution():
             self.fitness = fitness
             self.fitted = result
         return self
-
-# TODO Does it make sense to have this function in this file?
-def load_file(input: tuple[str, int]) -> tuple[Polygon, str]:
-    """Helper function to load images with multiprocessing."""
-    file, margin = input
-    return (load_image(file, margin), file)
 
 def run_fit(tasks: list[Solution], cache: dict[str, Polygon]) -> list[Solution]:
     """Helper function to run fit with multiprocessing."""

@@ -17,12 +17,27 @@
 import os
 import multiprocessing
 import json
+from typing import TypedDict
 from PySide6.QtCore import QLocale
 from PySide6.QtGui import QDoubleValidator, QIntValidator, QFont
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QLabel, QLineEdit, QHBoxLayout, QScrollArea
 
-A4_width = 210
-A4_height = 297
+A4_width = 210.0
+A4_height = 297.0
+
+class Config(TypedDict):
+    num_generations : int # Number of generations.
+    population_size : int # Number of solutions in the population.
+    mutation_rate : int # % chance of mutation between 1 - 100
+    rotations : int # 360/n angles to consider
+
+    n_processes : int # Amount of processors assigned to pools, also influences the amount of parallel tasks spawned
+
+    mm_width : float # Bin sizes
+    mm_height : float
+    dpi : float
+    margin : int # margin to be added around the outside of each sticker's cut line
+    padding : int # padding to be added to the inside of each sticker's cut line
 
 class ConfigPage(QScrollArea):
     def __init__(self, parent = None, height = 300, width = 250, application_path = os.path.dirname(os.path.abspath(__file__))) -> None:
@@ -31,18 +46,18 @@ class ConfigPage(QScrollArea):
         self.config_file = os.path.join(application_path, 'config.json')
 
         self.defaults = {
-            'num_generations' : 50, # Number of generations.
-            'population_size' : 20, # Number of solutions in the population.
+            'num_generations' : 50,
+            'population_size' : 20,
             'mutation_rate' : 10,
-            'rotations': 8, # 360/n angles to consider
+            'rotations': 8,
 
             'n_processes' : multiprocessing.cpu_count(),
 
             'mm_width' : A4_width,
             'mm_height' : A4_height,
             'dpi' : 300.0,
-            'margin' : 5, # margin to be added around the outside of each sticker's cut line
-            'padding' : 5 # padding to be added to the inside of each sticker's cut line
+            'margin' : 5,
+            'padding' : 5
         }
 
         self.setFixedWidth(width)
@@ -183,16 +198,16 @@ class ConfigPage(QScrollArea):
             json.dump(self.defaults, file, indent=4)
         print(f'Created config.json at {self.config_file}')
 
-    def load_config(self):
+    def load_config(self) -> Config:
         if not os.path.isfile(self.config_file):
             self.init_config()
 
         with open(self.config_file, "r") as file:
-            config = json.load(file)
+            config: Config = json.load(file)
 
         return config
 
-    def save_config(self, changes):
+    def save_config(self, changes: Config) -> Config:
         config = self.load_config()
 
         config.update(changes)
@@ -217,7 +232,7 @@ class ConfigPage(QScrollArea):
         self.rot_box.setText(str(self.config["rotations"]))
 
     def _set_config(self):
-        self.config = {
+        self.config: Config = {
             'mm_width' : max(float(self.width_box.text()), 1.0),
             'mm_height' : max(float(self.height_box.text()), 1.0),
             'dpi' : max(float(self.dpi_box.text()), 1.0),

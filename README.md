@@ -9,6 +9,7 @@ It can also be used to place images in a bin for any other purposes.
 <img src="./imgs/cutlines.png" width="350">
 
 ## Usage Tips
+
 The margin setting refers to the space between the cutting line and other cutting lines. Padding refers to the distance between the cutting line and the actual image.
 
 <img src="./imgs/margin_padding.png" width="250">
@@ -21,4 +22,9 @@ The app finds your sticker by removing transparent background. Ensure that you r
 The output bin size can be customized in millimeters. Using the dpi settings the size and quality of the stickers on the resulting image can be modified.
 
 ## UI Preview
+
 <img src="./imgs/app_interface.png" width="250">
+
+## Planned Features
+
+- Setting amounts of individual stickers.

@@ -47,3 +47,8 @@ def load_image(path: str, margin: int) -> Polygon:
     # Add margin as buffer
     buffered = buffer(hull, margin)
     return buffered
+
+def load_file(input: tuple[str, int]) -> tuple[Polygon, str]:
+    """Helper function to load images with multiprocessing."""
+    file, margin = input
+    return (load_image(file, margin), file)
