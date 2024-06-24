@@ -175,6 +175,7 @@ class MainPage(QWidget):
 
         self._select_label.setText(f'{len(file_paths)} images selected')
         self._nest_button.setEnabled(True)
+        file_paths = [os.path.abspath(file) for file in file_paths]
         self._queue = file_paths
         self._ready_for_nest()
 
@@ -186,7 +187,7 @@ class MainPage(QWidget):
             QFileDialog.Option.ShowDirsOnly
         )
 
-        self.output_path = dir
+        self.output_path = os.path.abspath(dir)
 
 
 class UIWrapper(QMainWindow):

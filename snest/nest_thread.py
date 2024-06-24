@@ -116,9 +116,11 @@ class NestThread(QThread):
             plt.axis('off')
             # Ensure the plot is the full image
             plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-            plt.savefig(os.path.join(self.output_dir, f'export{i}.png'), dpi=self.config['dpi'])
+            png_output = os.path.join(self.output_dir, f'export{i}.png')
+            plt.savefig(png_output, dpi=self.config['dpi'])
             plt.close()
-            print(f'Created export file {i} at {os.path.join(self.output_dir, f'export{i}.png')}')
+            
+            print(f'Created export file {i} at {png_output}')
 
             bbox = fitter.bin.polygon.bounds
             width = bbox[2] - bbox[0]
@@ -144,7 +146,9 @@ class NestThread(QThread):
             flip_y = f'<g transform="translate(0,{height})">\n<g transform="scale(1,-1)">\n'
 
             # Format and write the svg file
-            with open(os.path.join(self.output_dir, f'export{i}.svg'), 'w') as f:
+            svg_output = os.path.join(self.output_dir, f'export{i}.svg')
+
+            with open(svg_output, 'w') as f:
                 f.write(textwrap.dedent(r'''
                     <?xml version="1.0" encoding="utf-8" ?>
                     <svg {attrs:s}>
@@ -159,7 +163,7 @@ class NestThread(QThread):
                     flip = flip_y
                 ).strip())
 
-            print(f'Created cut line file {i} at {os.path.join(self.output_dir, f'export{i}.svg')}')
+            print(f'Created cut line file {i} at {svg_output}')
             self.update_progress.emit(i)
 
         print('Algorithm finished')
