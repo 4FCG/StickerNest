@@ -24,7 +24,3 @@ The output bin size can be customized in millimeters. Using the dpi settings the
 ## UI Preview
 
 <img src="./imgs/app_interface.png" width="250">
-
-## Planned Features
-
-- Setting amounts of individual stickers.
