@@ -59,7 +59,7 @@ def load_image(path: str, margin: int) -> Polygon:
     return buffered
 
 
-def load_file(input: tuple[str, int]) -> tuple[Polygon, str]:
+def load_file(input: tuple[str, int, int]) -> tuple[int, Polygon]:
     """Helper function to load images with multiprocessing."""
-    file, margin = input
-    return (load_image(file, margin), file)
+    file, margin, file_id = input
+    return (file_id, load_image(file, margin))

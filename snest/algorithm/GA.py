@@ -122,16 +122,17 @@ class Fitter_GA:
         self.pool.close()
 
     # TODO This function is probably best not kept here
-    def set_polygons(self, polygons: list[Polygon],
-                     iterations: int) -> list[FitPoly]:
+    def set_polygons(self, files: dict[int, dict]):
         """Helper function to turn polygons into
-            FitPolys n = iterations amount of times."""
+            FitPolys"""
         new_polygons = []
-        for c in range(iterations):
-            # Outer loop repeats all images n times
-            # Inner loop ensures each repetition has same ID
-            for i, polygon in enumerate(polygons, 1):
-                new_polygons.append(FitPoly(polygon, polygon_id=i))
+
+        for poly_id, file in files.items():
+            for i in range(file['amount']):
+                new_polygons.append(
+                    FitPoly(file['polygon'], polygon_id=poly_id)
+                )
+
         self.polygons = new_polygons
 
     def __mate(self, male: Solution,

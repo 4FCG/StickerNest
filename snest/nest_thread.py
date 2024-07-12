@@ -25,6 +25,7 @@ from shapely import buffer
 import textwrap
 from snest.algorithm.GA import Fitter_GA
 from snest.algorithm.images import load_file
+from snest.config import Config
 
 mpl.use("agg")
 
@@ -36,13 +37,14 @@ class NestThread(QThread):
     update_progress = Signal(int)
     new_loading = Signal(tuple)
 
-    def __init__(self, images, output_dir, n_sets, config, parent=None):
+    def __init__(
+        self, images: list[dict], output_dir: str, config: Config, parent=None
+    ):
         super().__init__(parent)
 
         self.images = images
         self.output_dir = output_dir
         self.config = config
-        self.n_sets = n_sets
 
     def run(self):
         bin_width = self.config["mm_width"] * MM * self.config["dpi"]
@@ -55,16 +57,18 @@ class NestThread(QThread):
         # Create a list of loading tasks to be done in parallel
         load_tasks = []
 
-        for image in self.images:
-            if os.path.isfile(image):
-                # Add margin + padding, then later we remove the margin
-                load_tasks.append(
-                    (image, self.config["padding"] + self.config["margin"])
-                )
+        image_binds = {}
+
+        for i, image in enumerate(self.images, 1):
+            image_binds[i] = image
+            # Add margin + padding, then later we remove the margin
+            load_tasks.append((
+                image["path"],
+                self.config["padding"] + self.config["margin"],
+                i
+            ))
 
         # Load images in parallel
-        files = []
-
         for i, file in enumerate(
             tqdm(
                 pool.imap_unordered(load_file, load_tasks),
@@ -72,13 +76,18 @@ class NestThread(QThread):
                 desc="Loading images",
             )
         ):
-            files.append(file)
+            # We must use imap unordered for the progress bar
+            # Use ID to find the correct file
+            file_id, polygon = file
+            image_binds[file_id]["polygon"] = polygon
             self.update_progress.emit(i)
 
         pool.close()
 
         self.new_loading.emit((
-            0, self.config["num_generations"], "Running Optimizer"
+            0,
+            self.config["num_generations"],
+            "Running Optimizer"
         ))
         # Prepare the fitter with all the configuration settings
         fitter = Fitter_GA(
@@ -92,19 +101,9 @@ class NestThread(QThread):
             callback=self.update_progress.emit,
         )
 
-        polygons = []
-        image_paths = []
-
-        for file in files:
-            polygons.append(file[0])
-            image_paths.append(file[1])
         # Send the polygons to the fitter
-        fitter.set_polygons(polygons, self.n_sets)
-        # Bind polygon ID to image path so we can
-        # later get the image for each fitted polygon
-        image_binds = {
-            i: image_paths[i - 1] for i in range(1, len(polygons) + 1)
-        }
+        fitter.set_polygons(image_binds)
+
         # Run GA
         with fitter as ga:
             best = ga.calculate_fit()
@@ -135,7 +134,8 @@ class NestThread(QThread):
                     )
                     # Fetch the image that belongs to the polygon and flip its
                     # y axis to fit the way we fit polygons
-                    image = Image.open(image_binds[poly.polygon_id]).transpose(
+                    matching_image = image_binds[poly.polygon_id]["path"]
+                    image = Image.open(matching_image).transpose(
                         method=Image.FLIP_TOP_BOTTOM
                     )
                     # Apply the FitPoly transformation to the image,
@@ -205,7 +205,8 @@ class NestThread(QThread):
                             [
                                 '{key:s}="{val:s}"'.format(
                                     key=key, val=props[key]
-                                ) for key in props
+                                )
+                                for key in props
                             ]
                         ),
                         data=data,
