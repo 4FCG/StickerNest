@@ -180,9 +180,7 @@ class UIWrapper(QMainWindow):
 
         # Config Page
 
-        self.config_page = ConfigPage(
-            self, self.height(), self.width(), application_path
-        )
+        self.config_page = ConfigPage(self, application_path)
         self.config_page.back_button.clicked.connect(self._back_button)
 
         # Amounts Page

@@ -18,7 +18,7 @@ import os
 import multiprocessing
 import json
 from typing import TypedDict
-from PySide6.QtCore import QLocale
+from PySide6.QtCore import QLocale, Qt
 from PySide6.QtGui import QDoubleValidator, QIntValidator, QFont
 from PySide6.QtWidgets import (
     QPushButton,
@@ -52,12 +52,10 @@ class Config(TypedDict):
     padding: int
 
 
-class ConfigPage(QScrollArea):
+class ConfigPage(QWidget):
     def __init__(
         self,
-        parent=None,
-        height=300,
-        width=250,
+        parent: QWidget = None,
         application_path=os.path.dirname(os.path.abspath(__file__)),
     ) -> None:
         super().__init__(parent)
@@ -77,25 +75,38 @@ class ConfigPage(QScrollArea):
             "padding": 5,
         }
 
-        self.setFixedWidth(width)
-        self.setFixedHeight(height)
-        self.setWidgetResizable(True)
+        # self.setFixedWidth(width)
+        # self.setFixedHeight(height)
+
+        page_layout = QVBoxLayout()
+
+        scroll_area = QScrollArea(self)
+        scroll_area.horizontalScrollBar().setEnabled(False)
+        scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        scroll_area.setWidgetResizable(True)
+
+        page_layout.addWidget(scroll_area)
 
         layout = QVBoxLayout()
+        config_widget = QWidget(self)
+        config_widget.setLayout(layout)
+        scroll_area.setWidget(config_widget)
 
         # Output settings
 
-        output_label = QLabel(self)
+        output_label = QLabel(config_widget)
         output_label.setText("Output settings")
         output_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(output_label)
 
         layout.addSpacing(5)
 
-        width_label = QLabel(self)
+        width_label = QLabel(config_widget)
         width_label.setText("Output width (millimeter)")
         layout.addWidget(width_label)
-        self.width_box = QLineEdit(self)
+        self.width_box = QLineEdit(config_widget)
         width_validator = QDoubleValidator(1.0, 99999.0, 2, self.width_box)
         width_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         width_validator.setLocale(QLocale("en_US"))
@@ -105,10 +116,10 @@ class ConfigPage(QScrollArea):
 
         notation = QDoubleValidator.Notation.StandardNotation
 
-        height_label = QLabel(self)
+        height_label = QLabel(config_widget)
         height_label.setText("Output height (millimeter)")
         layout.addWidget(height_label)
-        self.height_box = QLineEdit(self)
+        self.height_box = QLineEdit(config_widget)
         height_validator = QDoubleValidator(1.0, 99999.0, 2, self.height_box)
         height_validator.setNotation(notation)
         height_validator.setLocale(QLocale("en_US"))
@@ -116,10 +127,10 @@ class ConfigPage(QScrollArea):
         self.height_box.setMinimumHeight(20)
         layout.addWidget(self.height_box)
 
-        dpi_label = QLabel(self)
+        dpi_label = QLabel(config_widget)
         dpi_label.setText("Output dpi")
         layout.addWidget(dpi_label)
-        self.dpi_box = QLineEdit(self)
+        self.dpi_box = QLineEdit(config_widget)
         dpi_validator = QDoubleValidator(1.0, 99999.0, 2, self.dpi_box)
         dpi_validator.setNotation(notation)
         dpi_validator.setLocale(QLocale("en_US"))
@@ -127,10 +138,10 @@ class ConfigPage(QScrollArea):
         self.dpi_box.setMinimumHeight(20)
         layout.addWidget(self.dpi_box)
 
-        margin_label = QLabel(self)
+        margin_label = QLabel(config_widget)
         margin_label.setText("Sticker margin")
         layout.addWidget(margin_label)
-        self.margin_box = QLineEdit(self)
+        self.margin_box = QLineEdit(config_widget)
         self.margin_box.setValidator(QIntValidator(0, 99999, self.margin_box))
         self.margin_box.setMinimumHeight(20)
         self.margin_box.setToolTip(
@@ -138,10 +149,10 @@ class ConfigPage(QScrollArea):
         )
         layout.addWidget(self.margin_box)
 
-        padding_label = QLabel(self)
+        padding_label = QLabel(config_widget)
         padding_label.setText("Sticker padding")
         layout.addWidget(padding_label)
-        self.padding_box = QLineEdit(self)
+        self.padding_box = QLineEdit(config_widget)
         self.padding_box.setValidator(
             QIntValidator(0, 99999, self.padding_box)
         )
@@ -155,17 +166,17 @@ class ConfigPage(QScrollArea):
 
         # Algorithm settings
 
-        algo_label = QLabel(self)
+        algo_label = QLabel(config_widget)
         algo_label.setText("Algorithm settings")
         algo_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(algo_label)
 
         layout.addSpacing(5)
 
-        gen_label = QLabel(self)
+        gen_label = QLabel(config_widget)
         gen_label.setText("Number of generations")
         layout.addWidget(gen_label)
-        self.gen_box = QLineEdit(self)
+        self.gen_box = QLineEdit(config_widget)
         self.gen_box.setValidator(QIntValidator(1, 999, self.gen_box))
         self.gen_box.setMinimumHeight(20)
         self.gen_box.setToolTip(
@@ -173,10 +184,10 @@ class ConfigPage(QScrollArea):
         )
         layout.addWidget(self.gen_box)
 
-        pop_label = QLabel(self)
+        pop_label = QLabel(config_widget)
         pop_label.setText("Population size")
         layout.addWidget(pop_label)
-        self.pop_box = QLineEdit(self)
+        self.pop_box = QLineEdit(config_widget)
         self.pop_box.setValidator(QIntValidator(2, 999, self.pop_box))
         self.pop_box.setMinimumHeight(20)
         self.pop_box.setToolTip(
@@ -184,10 +195,10 @@ class ConfigPage(QScrollArea):
         )
         layout.addWidget(self.pop_box)
 
-        mut_label = QLabel(self)
+        mut_label = QLabel(config_widget)
         mut_label.setText("Mutation rate")
         layout.addWidget(mut_label)
-        self.mut_box = QLineEdit(self)
+        self.mut_box = QLineEdit(config_widget)
         self.mut_box.setValidator(QIntValidator(1, 100, self.mut_box))
         self.mut_box.setMinimumHeight(20)
         self.mut_box.setToolTip(
@@ -195,10 +206,10 @@ class ConfigPage(QScrollArea):
         )
         layout.addWidget(self.mut_box)
 
-        rot_label = QLabel(self)
+        rot_label = QLabel(config_widget)
         rot_label.setText("Rotations")
         layout.addWidget(rot_label)
-        self.rot_box = QLineEdit(self)
+        self.rot_box = QLineEdit(config_widget)
         self.rot_box.setValidator(QIntValidator(1, 360, self.rot_box))
         self.rot_box.setMinimumHeight(20)
         self.rot_box.setToolTip(
@@ -212,18 +223,16 @@ class ConfigPage(QScrollArea):
         button_layout = QHBoxLayout()
         button_box = QWidget(self)
         button_box.setLayout(button_layout)
-        layout.addWidget(button_box)
+        page_layout.addWidget(button_box)
 
-        self.back_button = QPushButton("Back", self)
+        self.back_button = QPushButton("Back", button_box)
         button_layout.addWidget(self.back_button)
 
-        self.save_button = QPushButton("Save Config", self)
+        self.save_button = QPushButton("Save Config", button_box)
         self.save_button.clicked.connect(self._set_config)
         button_layout.addWidget(self.save_button)
 
-        config_widget = QWidget(self)
-        config_widget.setLayout(layout)
-        self.setWidget(config_widget)
+        self.setLayout(page_layout)
 
         self._reload_config()
 
